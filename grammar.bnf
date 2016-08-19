@@ -1,0 +1,51 @@
+/* Lexical elements */
+
+_digit : '0'-'9' ;
+
+_letter : 'a'-'z' | 'A'-'Z' ;
+
+_alphanumeric : _letter | _digit ;
+
+variable : _letter { _alphanumeric | '.' | '_' } ;
+
+int_lit : _digit {_digit} ;
+
+float_lit : _digit { '.' | _digit } ;
+
+string_lit : '"' {.} '"' | '\'' {.} '\'';
+
+!whitespace : ' ' | '\t' | '\n' | '\r' ;
+
+<<import ( "github.com/sjhitchner/go-pred/ast" )>>
+
+Expression : Expression "and" Expression      << ast.NewLogicalAnd($0, $2) >>
+     | Expression "or" Expression             << ast.NewLogicalOr($0, $2) >>
+     | "not" Expression                       << ast.NewNegation($1) >>
+     | Term
+     ;
+
+Term : Factor ">" Factor                      << ast.NewComparisonGreaterThan($0, $2) >>
+       | Factor ">=" Factor                   << ast.NewComparisonGreaterThanEquals($0, $2) >>
+       | Factor "<" Factor                    << ast.NewComparisonLessThan($0, $2) >>
+       | Factor "<=" Factor                   << ast.NewComparisonLessThanEquals($0, $2) >>
+       | Factor "=" Factor                    << ast.NewComparisonEquals($0, $2) >>
+       | Factor "==" Factor                   << ast.NewComparisonEquals($0, $2) >>
+       | Factor "!=" Factor                   << ast.NewComparisonNotEquals($0, $2) >>
+       | Factor "is not" Factor               << ast.NewComparisonIsNot($0, $2) >>
+       | Factor "is" Factor                   << ast.NewComparisonIs($0, $2) >>
+       | Factor "contains" Factor             << ast.NewComparisonContains($0, $2) >>
+       | Factor "matches" Factor              << ast.NewMatches($0, $2) >>
+       | Factor
+       ;
+
+Factor : int_lit                              << ast.NewLiteralInt($0) >>
+       | string_lit                           << ast.NewLiteralString($0) >>  
+       | float_lit                            << ast.NewLiteralFloat($0) >>
+       | variable                             << ast.NewResolver($0) >>
+       | "true"                               << ast.NewLiteralBool(true) >>
+       | "false"                              << ast.NewLiteralBool(false) >>
+       | "undefined"                          << nil, nil >>
+       | "null"                               << nil, nil >>
+       | "empty"                              << nil, nil >>
+       | "(" Expression ")"                   << ast.NewClause($1) >>
+       ;
